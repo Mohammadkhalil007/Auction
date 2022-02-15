@@ -1,0 +1,59 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.11;
+
+contract Custom_Auction{
+    event Start();
+    event End(address highBider, uint HighestBid);
+     event Bid(address indexed sender, uint amount);
+    event Withdraw(address indexed bidder, uint amount);
+   address payable public  seller;
+
+    bool public started;
+    bool public ended;
+
+    uint public endAt;
+
+    uint public HighestBid;
+    address public highBider;
+
+    mapping (address => uint) recordOfBider;
+    
+    constructor(){
+        seller=payable(msg.sender);
+    }
+     function start() external  {
+         require (!started,"already started");
+         require (msg.sender == seller, "you can not start the auction");
+          started=true;
+          endAt= block.timestamp + 5 minutes;
+          emit Start();
+     }
+     function bid()external payable{
+         require(started,"Not Started Yet");
+         require(block.timestamp < endAt, "Ended");
+         require(msg.value >= HighestBid);
+         if(highBider !=address(0)){
+             recordOfBider[highBider] +=HighestBid;
+         }
+         HighestBid=msg.value;
+         highBider=msg.sender;
+         emit Bid(highBider, HighestBid);
+     }
+     function withdraw()external payable{
+          uint bal=recordOfBider[msg.sender];
+          recordOfBider[msg.sender]=0;
+        (bool sent, bytes memory data) = payable(msg.sender).call{value: bal}("");
+        require(sent, "Could not withdraw");
+
+        emit Withdraw(msg.sender, bal);
+     } 
+
+    function end() external{
+        require(started, "first need to start");
+        require(block.timestamp >= endAt, "Auction is still ongoing");
+        require(!ended ,"Auction already ended");
+        ended=true;  
+        emit End(highBider,HighestBid);    
+
+    }   
+}
